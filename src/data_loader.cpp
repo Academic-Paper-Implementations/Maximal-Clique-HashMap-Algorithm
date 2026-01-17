@@ -35,7 +35,7 @@ std::vector<SpatialInstance> DataLoader::load_csv(const std::string& filepath) {
         SpatialInstance instance;
 
         instance.type = row["Feature"].get<FeatureType>();
-        instance.id = instanceID(instance.type + std::to_string(row["Instance"].get<int>()));
+        instance.id = instance.type + std::to_string(row["Instance"].get<int>());
         instance.x = row[xCol].get<double>();
         instance.y = row[yCol].get<double>();
 

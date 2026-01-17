@@ -20,7 +20,7 @@
 using FeatureType = std::string;
 
 /** @brief Type alias for instance identifiers (e.g., "A1", "B2") */
-using instanceID = std::string;
+using InstanceID = std::string;
 
 /** @brief Type alias for a colocation pattern (set of feature types) */
 using Colocation = std::vector<FeatureType>;

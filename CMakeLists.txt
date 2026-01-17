@@ -4,7 +4,7 @@
 cmake_minimum_required (VERSION 3.10)
 
 # Set project name
-project ("Maximal CLique")
+project ("Colocation Mining with Maximal Clique & Rare Feature")
 
 set (CMAKE_CXX_STANDARD 17)
 
