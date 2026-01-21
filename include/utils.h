@@ -1,0 +1,22 @@
+/**
+ * @file utils.h
+ * @brief Utility functions for feature analysis and calculations
+ */
+
+#pragma once
+
+#include "types.h"
+#include <map>
+#include <unordered_map>
+
+// Count instances per feature type and sort by frequency
+std::map<FeatureType, int> countAndSortFeatures(const std::vector<SpatialInstance>& instances);
+
+// Calculate dispersion (delta) from feature distribution
+double calculateDirpersion(const std::map<FeatureType, int>& featureCount);
+
+// Calculate rare intensity for each instance in a colocation
+std::unordered_map<InstanceID, double> calcRareIntensity(
+	Colocation c,
+	const std::map<FeatureType, int>& featureCounts,
+	double delta);

@@ -3,12 +3,11 @@
  * @brief Core data type definitions for spatial colocation pattern mining
  *
  * This file defines the fundamental data structures and type aliases used throughout
- * the joinless colocation mining algorithm implementation.
+ * the maximal clique-based colocation mining algorithm implementation.
  */
 
 #pragma once
 #include <string>
-#include <set>
 #include <vector>
 #include <map>
 
@@ -39,7 +38,7 @@ using ColocationInstance = std::vector<const struct SpatialInstance*>;
  */
 struct SpatialInstance {
     FeatureType type;  ///< Feature type of this instance (e.g., "A", "B")
-    instanceID id;     ///< Unique identifier (e.g., "A1", "B2")
+    InstanceID id;     ///< Unique identifier (e.g., "A1", "B2")
     double x, y;       ///< 2D spatial coordinates
 };
 
@@ -47,9 +46,9 @@ struct SpatialInstance {
  * @brief Structure representing a star neighborhood
  *
  * A star neighborhood consists of a center instance and all its neighboring instances
- * within the distance threshold. This is a key concept in the joinless algorithm.
+ * within the distance threshold.
  */
-struct OrderedNeigh {
+struct NeighborSet {
     const SpatialInstance* center;                      ///< Center instance
-    std::unordered_map<FeatureType, std::vector<const SpatialInstance*>> neighbors;      ///< All neighbors within distance threshold
+    std::vector<const SpatialInstance*> neighbors;      ///< All neighbors within distance threshold
 };
