@@ -66,10 +66,47 @@ std::unordered_map<InstanceID, double> calcRareIntensity(
 	Colocation c,
 	const std::map<FeatureType, int>& featureCounts,
 	double delta) {
-	//////////////////////////////////////
-	//////// TODO: Implement (11)//////////
-	//////////////////////////////////////
+		//////// TODO: Implement (11)//////////
+	std::unordered_map<InstanceID, double> intensityMap;
+	if (c.empty()) return intensityMap;
 
+	// 1. Find N(f_min)
+	// Initialize with first feature's count
+	int minCount = -1;
+	
+	for (const auto& f : c) {
+		if (featureCounts.find(f) != featureCounts.end()) {
+			int count = featureCounts.at(f);
+			if (minCount == -1 || count < minCount) {
+				minCount = count;
+			}
+		}
+	}
 
+	if (minCount <= 0) return intensityMap; 
 
+	// 2. Calculate Rare Intensity (RI) and combined weight factor
+	double sigmaSq2 = 2.0 * delta * delta;
+	if (sigmaSq2 == 0) sigmaSq2 = 1e-9; 
+
+	double logMin = std::log(static_cast<double>(minCount));
+
+	for (const auto& f : c) {
+		if (featureCounts.find(f) != featureCounts.end()) {
+			int count = featureCounts.at(f);
+			if (count > 0) {
+				// Step 2: Calculate Delta_log
+				double logCount = std::log(static_cast<double>(count));
+				double deltaLog = logCount - logMin;
+
+				// Step 3: Calculate RI
+				double ri = std::exp(-(deltaLog * deltaLog) / sigmaSq2);
+
+				// Store result (Mapping FeatureType -> RI)
+				intensityMap[f] = ri;
+			}
+		}
+	}
+
+	return intensityMap;
 };
