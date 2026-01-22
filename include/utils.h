@@ -8,6 +8,14 @@
 #include "types.h"
 #include <map>
 #include <unordered_map>
+#include <set>
+#include <string>
+#include <chrono>
+#include <vector>
+
+// ============================================================================
+// Existing TODO Functions
+// ============================================================================
 
 // Count instances per feature type and sort by frequency
 std::map<FeatureType, int> countAndSortFeatures(const std::vector<SpatialInstance>& instances);
