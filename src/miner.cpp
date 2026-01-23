@@ -111,7 +111,7 @@ std::map<FeatureType, std::set<const SpatialInstance*>> Miner::queryInstances(
 double Miner::computeWeightedPI(
 	const std::map<FeatureType, std::set<const SpatialInstance*>>& partInstances,
 	Colocation c,
-	const std::unordered_map<InstanceID, double>& rareIntensityMap,
+	const std::unordered_map<FeatureType, double>& rareIntensityMap,
 	const std::map<FeatureType, int>& featureCounts) {
 		//////// TODO: Implement (12)/////////
 	if (c.empty()) return 0.0;
@@ -130,7 +130,7 @@ double Miner::computeWeightedPI(
 			totalCount = featureCounts.at(f);
 		}
 
-		if (totalCount == 0) continue; // Should not happen
+		if (totalCount == 0) continue;
 
 		double pr = static_cast<double>(count) / totalCount;
 

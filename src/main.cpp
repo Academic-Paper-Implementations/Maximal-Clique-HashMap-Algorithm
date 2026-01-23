@@ -13,6 +13,7 @@
 #include <iostream>
 #include <chrono>
 #include <iomanip>
+#include <cmath>
 
 int main(int argc, char* argv[]) {
     auto programStart = std::chrono::high_resolution_clock::now();
