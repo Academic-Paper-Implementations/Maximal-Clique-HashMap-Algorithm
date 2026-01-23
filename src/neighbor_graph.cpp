@@ -38,7 +38,8 @@ std::vector<std::pair<SpatialInstance, SpatialInstance>> NeighborGraph::findNeig
 			// Check Y distance
 			if (std::abs(sortedInstances[j].y - sortedInstances[i].y) <= distanceThreshold) {
 				// Check exact Euclidean distance
-				if (euclideanDist(sortedInstances[i], sortedInstances[j]) <= distanceThreshold && sortedInstances[i].type != sortedInstances[j].type) {
+				if (euclideanDist(sortedInstances[i], sortedInstances[j]) <= distanceThreshold &&
+					sortedInstances[i].type != sortedInstances[j].type) {
 					pairs.push_back({ sortedInstances[i], sortedInstances[j] });
 				}
 			}

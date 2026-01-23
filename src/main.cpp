@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file main.cpp
  * @brief Simplified Entry point for Co-location Mining
  */
