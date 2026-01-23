@@ -9,12 +9,13 @@
 #include <queue>
 #include <map>
 #include <unordered_map>
+#include <algorithm>
 
 
 // Main mining algorithm: find all prevalent colocation patterns
 std::set<Colocation> Miner::minePCPs(
 	std::priority_queue<Colocation>& candidateColocations,
-	const std::unordered_map<Colocation, std::map<FeatureType, std::set<SpatialInstance*>>>& hashMap,
+	const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap,
 	const std::map<FeatureType, int>& featureCounts,
 	double delta,
 	double min_prev) {
@@ -65,12 +66,12 @@ std::set<Colocation> Miner::minePCPs(
 
 
 // Query instances of a colocation from hashmap
-std::map<FeatureType, std::set<SpatialInstance*>> Miner::queryInstances(
+std::map<FeatureType, std::set<const SpatialInstance*>> Miner::queryInstances(
 	Colocation c,
-	const std::unordered_map<Colocation, std::map<FeatureType, std::set<SpatialInstance*>>>& hashMap) {
+	const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap) {
 		//////// TODO: Implement (10)/////////
 
-	std::map<FeatureType, std::set<SpatialInstance*>> instancesMap;
+	std::map<FeatureType, std::set<const SpatialInstance*>> instancesMap;
 
 	for (const auto& entry : hashMap) {
 		const Colocation& maximalClique = entry.first;
@@ -108,7 +109,7 @@ std::map<FeatureType, std::set<SpatialInstance*>> Miner::queryInstances(
 
 // Compute weighted participation index for a colocation
 double Miner::computeWeightedPI(
-	const std::map<FeatureType, std::set<SpatialInstance*>>& partInstances,
+	const std::map<FeatureType, std::set<const SpatialInstance*>>& partInstances,
 	Colocation c,
 	const std::unordered_map<InstanceID, double>& rareIntensityMap,
 	const std::map<FeatureType, int>& featureCounts) {
@@ -164,7 +165,7 @@ std::set<Colocation> Miner::generateSubsets(const Colocation& c) {
 	//////// TODO: Implement (13)/////////
 	//////////////////////////////////////
 
-
+	return {};
 
 };
 
@@ -176,6 +177,6 @@ std::set<Colocation> Miner::deducePrevalentSubsets(
 	//////// TODO: Implement (16)/////////
 	//////////////////////////////////////
 
-
+	return {};
 
 };

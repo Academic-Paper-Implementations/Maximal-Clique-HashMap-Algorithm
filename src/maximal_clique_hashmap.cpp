@@ -128,7 +128,7 @@ public:
 };
 
 // Execute Bron-Kerbosch algorithm to find all maximal cliques
-std::vector<std::vector<ColocationInstance>> MaximalCliqueHashmap::executeDivBK(
+std::vector<ColocationInstance> MaximalCliqueHashmap::executeDivBK(
 	const std::vector<NeighborSet>& neighborSets) {
     // Key: <Type, ID>, Value int(0, 1, 2...)
     std::map<std::pair<FeatureType, InstanceID>, int> uniqueNodeMap;
@@ -187,7 +187,8 @@ std::vector<std::vector<ColocationInstance>> MaximalCliqueHashmap::executeDivBK(
     std::list<std::shared_ptr<BKGenerator>> active_generators;
     active_generators.push_back(std::make_shared<BKGenerator>(CliqueVec{}, V, CliqueVec{}, &adj, 0));
 
-    std::vector<ColocationInstance> flatCliques;
+    //std::vector<ColocationInstance> flatCliques;
+    std::set<CliqueVec> uniqueCliques;
 
     while (!active_generators.empty()) {
         auto it = active_generators.begin();
@@ -198,14 +199,17 @@ std::vector<std::vector<ColocationInstance>> MaximalCliqueHashmap::executeDivBK(
             if (cliqueOpt.has_value()) {
                 // --- int -> ColocationInstance ---
                 CliqueVec resultIDs = cliqueOpt.value();
-                ColocationInstance colocationResult;
-                colocationResult.reserve(resultIDs.size());
+                std::sort(resultIDs.begin(), resultIDs.end());
+                uniqueCliques.insert(resultIDs);
 
-                for (int id : resultIDs) {
+                /*ColocationInstance colocationResult;
+                colocationResult.reserve(resultIDs.size());*/
+
+                /*for (int id : resultIDs) {
                     colocationResult.push_back(internalToInstance[id]);
                 }
 
-                flatCliques.push_back(colocationResult);
+                flatCliques.push_back(colocationResult);*/
                 ++it;
             }
             else {
@@ -228,31 +232,55 @@ std::vector<std::vector<ColocationInstance>> MaximalCliqueHashmap::executeDivBK(
         }
     }
 
-    std::vector<std::vector<ColocationInstance>> result;
-    if (!flatCliques.empty()) {
-        result.push_back(flatCliques);
+    // --- CHANGE 3: Chuyển từ Set (Unique) sang Vector Output ---
+    std::vector<ColocationInstance> finalResult;
+    finalResult.reserve(uniqueCliques.size());
+
+    for (const auto& cliqueIDs : uniqueCliques) {
+        ColocationInstance colocationResult;
+        colocationResult.reserve(cliqueIDs.size());
+
+        for (int id : cliqueIDs) {
+            colocationResult.push_back(internalToInstance[id]);
+        }
+        finalResult.push_back(colocationResult);
     }
-    return result;
+
+    return finalResult;
 };
 
 // Build instance hashmap from maximal cliques
-std::unordered_map<Colocation, std::map<FeatureType, std::set<SpatialInstance*>>> MaximalCliqueHashmap::buildInstanceHash(
+std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>> MaximalCliqueHashmap::buildInstanceHash(
 	const std::vector<NeighborSet>& neighborSets) {
-	//////////////////////////////////////
-	//////// TODO: Implement (5)//////////
-	//////////////////////////////////////
+    std::vector<ColocationInstance> divBk_result = MaximalCliqueHashmap::executeDivBK(neighborSets);
+	std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>> hashMap;
+    // Process each clique
+    for (const auto& clique : divBk_result) {
+        // Build colocation key
+        Colocation colocationKey;
+        colocationKey.reserve(clique.size());
+        for (const auto& instancePtr : clique) {
+            colocationKey.push_back(instancePtr->type);
+        }
 
+        std::sort(colocationKey.begin(), colocationKey.end());
 
+        // Insert instances into hashmap
+        for (const auto& instancePtr : clique) {
+            hashMap[colocationKey][instancePtr->type].insert(instancePtr);
+        }
+    }
 
+	return hashMap;
 };
 
 // Extract initial candidate colocations from hashmap
 std::priority_queue<Colocation> MaximalCliqueHashmap::extractInitialCandidates(
-	const std::unordered_map<Colocation, std::map<FeatureType, std::set<SpatialInstance*>>>& hashMap) {
+	const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap) {
 	//////////////////////////////////////
 	//////// TODO: Implement (6)//////////
 	//////////////////////////////////////
-
+    return {};
 
 
 };
