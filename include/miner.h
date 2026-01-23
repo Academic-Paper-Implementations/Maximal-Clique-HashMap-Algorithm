@@ -5,8 +5,9 @@
 
 #pragma once
 #include "types.h"
-#include <map>
 #include <set>
+#include <map>
+#include <unordered_map>
 #include <queue>
 
 /**
@@ -23,7 +24,7 @@ private:
 	double computeWeightedPI(
 		const std::map<FeatureType, std::set<SpatialInstance*>>& partInstances,
 		Colocation c,
-		const std::unordered_map<InstanceID, double>& rareIntensityMap,
+		const std::unordered_map<FeatureType, double>& rareIntensityMap,
 		const std::map<FeatureType, int>& featureCounts);
 
 	// Generate all size-1 subsets of a colocation

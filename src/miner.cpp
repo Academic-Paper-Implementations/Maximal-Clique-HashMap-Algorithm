@@ -110,7 +110,7 @@ std::map<FeatureType, std::set<SpatialInstance*>> Miner::queryInstances(
 double Miner::computeWeightedPI(
 	const std::map<FeatureType, std::set<SpatialInstance*>>& partInstances,
 	Colocation c,
-	const std::unordered_map<InstanceID, double>& rareIntensityMap,
+	const std::unordered_map<FeatureType, double>& rareIntensityMap,
 	const std::map<FeatureType, int>& featureCounts) {
 		//////// TODO: Implement (12)/////////
 	if (c.empty()) return 0.0;
@@ -129,7 +129,7 @@ double Miner::computeWeightedPI(
 			totalCount = featureCounts.at(f);
 		}
 
-		if (totalCount == 0) continue; // Should not happen
+		if (totalCount == 0) continue;
 
 		double pr = static_cast<double>(count) / totalCount;
 
@@ -163,7 +163,7 @@ std::set<Colocation> Miner::generateSubsets(const Colocation& c) {
 	//////////////////////////////////////
 	//////// TODO: Implement (13)/////////
 	//////////////////////////////////////
-
+	return {};
 
 
 };
@@ -175,7 +175,7 @@ std::set<Colocation> Miner::deducePrevalentSubsets(
 	//////////////////////////////////////
 	//////// TODO: Implement (16)/////////
 	//////////////////////////////////////
-
+	return {};
 
 
 };
