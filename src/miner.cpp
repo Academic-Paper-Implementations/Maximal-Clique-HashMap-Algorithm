@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file miner.cpp
  * @brief Implementation: Mining prevalent colocation patterns using weighted PI
  */
@@ -22,45 +22,53 @@ std::set<Colocation> Miner::minePCPs(
 
 	std::set<Colocation> prevalentPCs;
 	std::set<Colocation> nonPrevalentPCs;
-	std::set<Colocation> newCs = {};
 
 	while (!candidateColocations.empty()) {
 		Colocation c = candidateColocations.top();
 		candidateColocations.pop();
 
-		if (prevalentPCs.find(c) == prevalentPCs.end() && 
-			nonPrevalentPCs.find(c) == nonPrevalentPCs.end()) {
+		// Skip if already processed
+		if (prevalentPCs.find(c) != prevalentPCs.end() || 
+			nonPrevalentPCs.find(c) != nonPrevalentPCs.end()) {
+			continue;  // ✅ QUAN TRỌNG: Skip early!
+		}
 
-			auto partInstances = queryInstances(c, hashMap);
-			auto rareIntensityMap = calcRareIntensity(c, featureCounts, delta);
+		auto partInstances = queryInstances(c, hashMap);
+		auto rareIntensityMap = calcRareIntensity(c, featureCounts, delta);
+		
+		// Calculate Weighted PI
+		double weightedPI = computeWeightedPI(partInstances, c, rareIntensityMap, featureCounts);
+
+		if (weightedPI >= min_prev) {
+			// ✅ Pattern is PREVALENT
+			prevalentPCs.insert(c);
 			
-			// 5. Calculate Weighted PI
-			// Note: Changed signature of computeWeightedPI as per user authorization to include featureCounts
-			double weightedPI = computeWeightedPI(partInstances, c, rareIntensityMap, featureCounts);
-			newCs = generateSubsets(c);
-
-			if (weightedPI >= min_prev) {
-				prevalentPCs.insert(c);
-				auto prevalentSubsets = deducePrevalentSubsets(newCs, c, featureCounts);
-				for (const auto& subset : prevalentSubsets) {
-					prevalentPCs.insert(subset);
-				}
-
-				std::set<Colocation> filteredSubsets;
-				for (const auto& subset : newCs) {
-					if (prevalentSubsets.find(subset) == prevalentSubsets.end()) {
-						filteredSubsets.insert(subset);
-					}
-				}
+			// Generate subsets
+			std::set<Colocation> newCs = generateSubsets(c);
+			auto prevalentSubsets = deducePrevalentSubsets(newCs, c, featureCounts);
+			
+			// Add proven prevalent subsets
+			for (const auto& subset : prevalentSubsets) {
+				prevalentPCs.insert(subset);
 			}
-			else {
-				nonPrevalentPCs.insert(c);
+
+			// ✅ CHỈ PUSH SUBSETS CHƯA ĐƯỢC CHỨNG MINH PREVALENT
+			for (const auto& subset : newCs) {
+				if (prevalentSubsets.find(subset) == prevalentSubsets.end() &&
+					prevalentPCs.find(subset) == prevalentPCs.end() &&
+					nonPrevalentPCs.find(subset) == nonPrevalentPCs.end()) {
+					candidateColocations.push(subset);
+				}
 			}
 		}
-		for (const auto& subset : newCs) {
-			candidateColocations.push(subset);
+		else {
+			// ✅ Pattern is NON-PREVALENT
+			nonPrevalentPCs.insert(c);
+			// KHÔNG push subsets vì theo downward closure,
+			// nếu C không prevalent thì supersets của nó cũng không prevalent
 		}
 	}
+	
 	return prevalentPCs;
 };
 
@@ -181,7 +189,7 @@ std::set<Colocation> Miner::deducePrevalentSubsets(
 	std::set<Colocation> provenPrevalent;
 	
 	// 1. Find f_min (feature with min frequency) in parent c
-	FeatureType f_min = -1;
+	FeatureType f_min = "";
 	int minCount = -1;
 
 	for (const auto& f : c) {
@@ -200,19 +208,20 @@ std::set<Colocation> Miner::deducePrevalentSubsets(
 	}
 
 	// 2. Lemma 2: If C is prevalent, any subset C' containing f_min is also prevalent.
-	for (const auto& subset : subsets) {
-		bool hasMinFeature = false;
-		for (const auto& f : subset) {
-			if (f == f_min) {
-				hasMinFeature = true;
-				break;
+	if (!f_min.empty()) {
+		for (const auto& subset : subsets) {
+			bool hasMinFeature = false;
+			for (const auto& f : subset) {
+				if (f == f_min) {
+					hasMinFeature = true;
+					break;
+				}
+			}
+
+			if (hasMinFeature) {
+				provenPrevalent.insert(subset);
 			}
 		}
-
-		if (hasMinFeature) {
-			provenPrevalent.insert(subset);
-		}
 	}
-
 	return provenPrevalent;
 };
