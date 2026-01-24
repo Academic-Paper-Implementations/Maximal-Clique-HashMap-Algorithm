@@ -275,12 +275,12 @@ std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>> Ma
 };
 
 // Extract initial candidate colocations from hashmap
-std::priority_queue<Colocation> MaximalCliqueHashmap::extractInitialCandidates(
+std::priority_queue<Colocation, std::vector<Colocation>, ColocationPriorityComp> MaximalCliqueHashmap::extractInitialCandidates(
 	const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap) {
-	//////////////////////////////////////
-	//////// TODO: Implement (6)//////////
-	//////////////////////////////////////
-    return {};
-
-
+    std::priority_queue<Colocation, std::vector<Colocation>, ColocationPriorityComp> candidateQueue;
+    for (const auto& entry : hashMap) {
+        const Colocation& maximalClique = entry.first;
+		candidateQueue.push(maximalClique);
+    }
+	return candidateQueue;
 };
