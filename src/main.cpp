@@ -58,11 +58,11 @@ int main(int argc, char* argv[]) {
         featureCount,
         delta,
         config.minPrev
-	);
+    );
 
     // --- Final Report ---
     auto programEnd = std::chrono::high_resolution_clock::now();
-    double totalTime = std::chrono::duration<double>(programEnd - programStart).count();;
+    double totalTime = std::chrono::duration<double>(programEnd - programStart).count();
 
     std::cout << "\n" << std::string(40, '=') << "\n";
     std::cout << "SUMMARY REPORT\n";
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
     }
     else {
         std::cout << "No patterns found.\n";
-    }
+   }
 
     return 0;
 }

@@ -26,6 +26,6 @@ public:
 	std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>> buildInstanceHash(const std::vector<NeighborSet>& neighborSets);
 
 	// Extract initial candidate colocations from hashmap
-	std::priority_queue<Colocation> extractInitialCandidates(
+	std::priority_queue<Colocation, std::vector<Colocation>, ColocationPriorityComp> extractInitialCandidates(
 		const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap);
 };
