@@ -62,12 +62,12 @@ double calculateDirpersion(const std::map<FeatureType, int>& featureCount) {
 };
 
 // Calculate rare intensity for each instance in a colocation
-std::unordered_map<InstanceID, double> calcRareIntensity(
+std::unordered_map<FeatureType, double> calcRareIntensity(
 	Colocation c,
 	const std::map<FeatureType, int>& featureCounts,
 	double delta) {
 		//////// TODO: Implement (11)//////////
-	std::unordered_map<InstanceID, double> intensityMap;
+	std::unordered_map<FeatureType, double> intensityMap;
 	if (c.empty()) return intensityMap;
 
 	// 1. Find N(f_min)
