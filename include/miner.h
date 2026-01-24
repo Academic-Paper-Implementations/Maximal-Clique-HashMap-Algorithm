@@ -30,7 +30,7 @@ private:
 	std::set<Colocation> generateSubsets(const Colocation& c);
 
 	// Deduce prevalent subsets using downward closure property
-	std::set<Colocation> deducePrevalentSubsets(std::set<Colocation>& subsets, const Colocation& c);
+	std::set<Colocation> deducePrevalentSubsets(std::set<Colocation>& subsets, const Colocation& c, const std::map<FeatureType, int>& featureCounts);
 
 public:
 	// Mine prevalent colocation patterns (main algorithm)

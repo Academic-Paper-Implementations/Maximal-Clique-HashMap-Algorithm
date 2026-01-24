@@ -40,7 +40,7 @@ std::set<Colocation> Miner::minePCPs(
 
 			if (weightedPI >= min_prev) {
 				prevalentPCs.insert(c);
-				auto prevalentSubsets = deducePrevalentSubsets(newCs, c);
+				auto prevalentSubsets = deducePrevalentSubsets(newCs, c, featureCounts);
 				for (const auto& subset : prevalentSubsets) {
 					prevalentPCs.insert(subset);
 				}
@@ -160,22 +160,58 @@ double Miner::computeWeightedPI(
 
 // Generate all size-1 subsets (remove one feature at a time)
 std::set<Colocation> Miner::generateSubsets(const Colocation& c) {
-	//////////////////////////////////////
-	//////// TODO: Implement (13)/////////
-	//////////////////////////////////////
+	std::set<Colocation> subsets;
+	if (c.size() <= 1) return subsets;
 
-
-
+	for (size_t i = 0; i < c.size(); ++i) {
+		Colocation sub = c;
+		sub.erase(sub.begin() + i);
+		subsets.insert(sub);
+	}
+	return subsets;
 };
 
 // Deduce prevalent subsets using downward closure property
 std::set<Colocation> Miner::deducePrevalentSubsets(
 	std::set<Colocation>& subsets,
-	const Colocation& c){
-	//////////////////////////////////////
-	//////// TODO: Implement (16)/////////
-	//////////////////////////////////////
+	const Colocation& c,
+	const std::map<FeatureType, int>& featureCounts) {
+	
+	std::set<Colocation> provenPrevalent;
+	
+	// 1. Find f_min (feature with min frequency) in parent c
+	FeatureType f_min = -1;
+	int minCount = -1;
 
+	for (const auto& f : c) {
+		int count = 0;
+		if (featureCounts.count(f)) {
+			count = featureCounts.at(f);
+		}
+		
+		if (minCount == -1 || count < minCount) {
+			minCount = count;
+			f_min = f;
+		} else if (count == minCount) {
+			// Optional tie-breaker
+			if (f < f_min) f_min = f;
+		}
+	}
 
+	// 2. Lemma 2: If C is prevalent, any subset C' containing f_min is also prevalent.
+	for (const auto& subset : subsets) {
+		bool hasMinFeature = false;
+		for (const auto& f : subset) {
+			if (f == f_min) {
+				hasMinFeature = true;
+				break;
+			}
+		}
 
+		if (hasMinFeature) {
+			provenPrevalent.insert(subset);
+		}
+	}
+
+	return provenPrevalent;
 };
