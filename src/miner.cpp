@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file miner.cpp
  * @brief Implementation: Mining prevalent colocation patterns using weighted PI
  */
@@ -205,19 +205,20 @@ std::set<Colocation> Miner::deducePrevalentSubsets(
 	}
 
 	// 2. Lemma 2: If C is prevalent, any subset C' containing f_min is also prevalent.
-	for (const auto& subset : subsets) {
-		bool hasMinFeature = false;
-		for (const auto& f : subset) {
-			if (f == f_min) {
-				hasMinFeature = true;
-				break;
+	if (!f_min.empty()) {
+		for (const auto& subset : subsets) {
+			bool hasMinFeature = false;
+			for (const auto& f : subset) {
+				if (f == f_min) {
+					hasMinFeature = true;
+					break;
+				}
+			}
+
+			if (hasMinFeature) {
+				provenPrevalent.insert(subset);
 			}
 		}
-
-		if (hasMinFeature) {
-			provenPrevalent.insert(subset);
-		}
 	}
-
 	return provenPrevalent;
 };
