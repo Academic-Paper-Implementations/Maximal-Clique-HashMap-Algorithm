@@ -22,55 +22,52 @@ std::set<Colocation> Miner::minePCPs(
 
 	std::set<Colocation> prevalentPCs;
 	std::set<Colocation> nonPrevalentPCs;
+	std::set<Colocation> visited;
 
 	while (!candidateColocations.empty()) {
 		Colocation c = candidateColocations.top();
 		candidateColocations.pop();
 
-		// Skip if already processed
-		if (prevalentPCs.find(c) != prevalentPCs.end() || 
-			nonPrevalentPCs.find(c) != nonPrevalentPCs.end()) {
-			continue;  // ✅ QUAN TRỌNG: Skip early!
-		}
+		if (visited.count(c)) continue;
+		visited.insert(c);
+
+		std::set<Colocation> newCs;
 
 		auto partInstances = queryInstances(c, hashMap);
 		auto rareIntensityMap = calcRareIntensity(c, featureCounts, delta);
-		
-		// Calculate Weighted PI
+
 		double weightedPI = computeWeightedPI(partInstances, c, rareIntensityMap, featureCounts);
+		newCs = generateSubsets(c);
 
 		if (weightedPI >= min_prev) {
-			// ✅ Pattern is PREVALENT
 			prevalentPCs.insert(c);
-			
-			// Generate subsets
-			std::set<Colocation> newCs = generateSubsets(c);
+
 			auto prevalentSubsets = deducePrevalentSubsets(newCs, c, featureCounts);
-			
-			// Add proven prevalent subsets
 			for (const auto& subset : prevalentSubsets) {
 				prevalentPCs.insert(subset);
 			}
 
-			// ✅ CHỈ PUSH SUBSETS CHƯA ĐƯỢC CHỨNG MINH PREVALENT
+			std::set<Colocation> filteredSubsets;
 			for (const auto& subset : newCs) {
-				if (prevalentSubsets.find(subset) == prevalentSubsets.end() &&
-					prevalentPCs.find(subset) == prevalentPCs.end() &&
-					nonPrevalentPCs.find(subset) == nonPrevalentPCs.end()) {
-					candidateColocations.push(subset);
+				if (!prevalentSubsets.count(subset)) {
+					filteredSubsets.insert(subset);
 				}
 			}
+			newCs = filteredSubsets;
 		}
 		else {
-			// ✅ Pattern is NON-PREVALENT
 			nonPrevalentPCs.insert(c);
-			// KHÔNG push subsets vì theo downward closure,
-			// nếu C không prevalent thì supersets của nó cũng không prevalent
+		}
+
+		for (const auto& subset : newCs) {
+			if (!visited.count(subset)) {
+				candidateColocations.push(subset);
+			}
 		}
 	}
-	
+
 	return prevalentPCs;
-};
+}
 
 
 // Query instances of a colocation from hashmap
@@ -170,7 +167,7 @@ double Miner::computeWeightedPI(
 // Generate all size-1 subsets (remove one feature at a time)
 std::set<Colocation> Miner::generateSubsets(const Colocation& c) {
 	std::set<Colocation> subsets;
-	if (c.size() <= 1) return subsets;
+	if (c.size() <= 2) return subsets;
 
 	for (size_t i = 0; i < c.size(); ++i) {
 		Colocation sub = c;
@@ -189,7 +186,7 @@ std::set<Colocation> Miner::deducePrevalentSubsets(
 	std::set<Colocation> provenPrevalent;
 	
 	// 1. Find f_min (feature with min frequency) in parent c
-	FeatureType f_min = "";
+	FeatureType f_min;
 	int minCount = -1;
 
 	for (const auto& f : c) {

@@ -237,6 +237,7 @@ std::vector<ColocationInstance> MaximalCliqueHashmap::executeDivBK(
     finalResult.reserve(uniqueCliques.size());
 
     for (const auto& cliqueIDs : uniqueCliques) {
+        if (cliqueIDs.size() < 2) continue;
         ColocationInstance colocationResult;
         colocationResult.reserve(cliqueIDs.size());
 
