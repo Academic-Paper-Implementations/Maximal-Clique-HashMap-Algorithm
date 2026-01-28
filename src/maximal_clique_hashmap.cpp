@@ -1,287 +1,243 @@
 ﻿/**
- * @file maximal_clique_hashmap.cpp
- * @brief Implementation: Maximal clique enumeration and hashmap construction
- */
+ * @file maximal_clique_hashmap.cpp
+ * @brief Implementation: Standard Bron-Kerbosch with Pivot
+ */
 
 #include "maximal_clique_hashmap.h"
 #include <algorithm>
 #include <iostream>
 #include <iterator>
-#include <list>
-#include <memory>
-#include <optional>
+#include <vector>
 #include <map>
 #include <set>
-#include <vector>
-#include <utility>
 
 namespace {
 
-    using NodeID = int; // Internal ID (0, 1, 2... N-1)
-    using CliqueVec = std::vector<NodeID>;
+	using NodeID = int; // Internal ID (0, 1, 2... N-1)
+	using CliqueVec = std::vector<NodeID>;
 
-    // Union of two sorted sets
-    CliqueVec set_intersection_helper(const CliqueVec& A, const CliqueVec& B) {
-        CliqueVec result;
-        std::set_intersection(A.begin(), A.end(), B.begin(), B.end(), std::back_inserter(result));
-        return result;
-    }
+	// Union of two sorted vectors
+	CliqueVec set_union_helper(const CliqueVec& A, const CliqueVec& B) {
+		CliqueVec result;
+		result.reserve(A.size() + B.size());
+		std::set_union(A.begin(), A.end(), B.begin(), B.end(), std::back_inserter(result));
+		return result;
+	}
 
-    // Difference of two sorted sets (A \ B)
-    CliqueVec set_difference_helper(const CliqueVec& A, const CliqueVec& B) {
-        CliqueVec result;
-        std::set_difference(A.begin(), A.end(), B.begin(), B.end(), std::back_inserter(result));
-        return result;
-    }
+	// Intersection of two sorted vectors
+	CliqueVec set_intersection_helper(const CliqueVec& A, const CliqueVec& B) {
+		CliqueVec result;
+		// Optimization: reserve distinct memory size based on smaller set
+		result.reserve(std::min(A.size(), B.size()));
+		std::set_intersection(A.begin(), A.end(), B.begin(), B.end(), std::back_inserter(result));
+		return result;
+	}
 
-    // Union of two sorted sets
-    CliqueVec set_union_helper(const CliqueVec& A, const CliqueVec& B) {
-        CliqueVec result;
-        std::set_union(A.begin(), A.end(), B.begin(), B.end(), std::back_inserter(result));
-        return result;
-    }
+	// Difference of two sorted vectors (A \ B)
+	CliqueVec set_difference_helper(const CliqueVec& A, const CliqueVec& B) {
+		CliqueVec result;
+		result.reserve(A.size());
+		std::set_difference(A.begin(), A.end(), B.begin(), B.end(), std::back_inserter(result));
+		return result;
+	}
+/**
+	     * @brief Standard Recursive Bron-Kerbosch with Pivot
+	     * Algorithm:
+	     * 1. Select pivot u from P U X (maximize |P n N(u)|)
+	     * 2. For each v in P \ N(u):
+	     * Recurse(R + v, P n N(v), X n N(v))
+	     * P = P - v
+	     * X = X + v
+	     */
+	int count_intersection(const CliqueVec& A, const CliqueVec& B) {
+		int i = 0, j = 0, count = 0;
+		while (i < A.size() && j < B.size()) {
+			if (A[i] == B[j]) { count++; i++; j++; }
+			else if (A[i] < B[j]) i++;
+			else j++;
+		}
+		return count;
+	}
+
+	void runBronKerbosch(
+		CliqueVec R,
+		CliqueVec P,
+		CliqueVec X,
+		const std::vector<std::vector<NodeID>>& adj,
+		std::vector<CliqueVec>& cliques)
+	{
+		if (P.empty() && X.empty()) {
+			if (R.size() >= 2) { // Only save cliques with size >= 2
+				cliques.push_back(R);
+			}
+			return;
+		}
+
+		if (P.empty()) return;
+
+		// --- Pivot Selection Strategy ---
+		// Find pivot u in P U X that maximizes |P intersect N(u)|
+		// Why? To minimize the number of recursive calls (candidates = P \ N(u))
+
+		int u_pivot = -1;
+		int max_intersection_size = -1;
+
+		// We can iterate over P and X separately to avoid creating a union vector
+		auto check_pivot = [&](int candidate_node) {
+			const auto& neighbors = adj[candidate_node];
+
+			int inter_size = count_intersection(P, neighbors);
+
+			if (inter_size > max_intersection_size) {
+				max_intersection_size = inter_size;
+				u_pivot = candidate_node;
+			}
+		};
+
+		for (int node : P) check_pivot(node);
+		for (int node : X) check_pivot(node);
+
+		// --- Candidates Calculation: P \ N(pivot) ---
+		CliqueVec candidates;
+		if (u_pivot != -1) {
+			candidates = set_difference_helper(P, adj[u_pivot]);
+		}
+		else {
+			candidates = P;
+		}
+
+		// --- Recursive Step ---
+		for (int v : candidates) {
+			CliqueVec newR = R;
+			newR.push_back(v);
+
+			CliqueVec newP;
+			if (P.size() < adj[v].size())
+				newP = set_intersection_helper(P, adj[v]);
+			else
+				newP = set_intersection_helper(adj[v], P);
+
+			CliqueVec newX;
+			if (X.size() < adj[v].size())
+				newX = set_intersection_helper(X, adj[v]);
+			else
+				newX = set_intersection_helper(adj[v], X);
+
+			runBronKerbosch(newR, newP, newX, adj, cliques);
+		}
+	}
 }
 
-class BKGenerator {
-public:
-    int depth;
-    CliqueVec R, P, X;
-    const std::vector<std::vector<NodeID>>* adj;
+// ============================================================================
+// PUBLIC METHODS IMPLEMENTATION
+// ============================================================================
 
-    CliqueVec candidates;
-    int current_candidate_idx;
-    std::shared_ptr<BKGenerator> sub_generator;
-    bool is_finished;
-
-    BKGenerator(CliqueVec r, CliqueVec p, CliqueVec x, const std::vector<std::vector<NodeID>>* g, int d)
-        : R(std::move(r)), P(std::move(p)), X(std::move(x)), adj(g), depth(d),
-        current_candidate_idx(0), is_finished(false), sub_generator(nullptr)
-    {
-        // 1. Pivot Strategy
-        if (P.empty() && X.empty()) return;
-
-        CliqueVec PUX = set_union_helper(P, X);
-        int u = -1;
-        int max_inter = -1;
-
-        for (int node : PUX) {
-            const auto& neighbors = (*adj)[node];
-            CliqueVec inter = set_intersection_helper(P, neighbors);
-            if ((int)inter.size() > max_inter) {
-                max_inter = inter.size();
-                u = node;
-            }
-        }
-
-        // 2. Candidates = P \ N(u)
-        if (u != -1) {
-            const auto& neighbors_u = (*adj)[u];
-            candidates = set_difference_helper(P, neighbors_u);
-        }
-        else {
-            candidates = P;
-        }
-    }
-
-    std::optional<CliqueVec> nextClique() {
-        if (P.empty() && X.empty()) {
-            if (!is_finished) {
-                is_finished = true;
-                return R;
-            }
-            return std::nullopt;
-        }
-
-        while (current_candidate_idx < candidates.size() || sub_generator != nullptr) {
-            if (sub_generator == nullptr) {
-                sub_generator = createNextBranch();
-                if (sub_generator == nullptr) break;
-            }
-
-            auto result = sub_generator->nextClique();
-            if (result.has_value()) {
-                return result;
-            }
-            else {
-                sub_generator = nullptr;
-            }
-        }
-
-        is_finished = true;
-        return std::nullopt;
-    }
-
-    std::shared_ptr<BKGenerator> createNextBranch() {
-        if (current_candidate_idx >= candidates.size()) return nullptr;
-
-        int v = candidates[current_candidate_idx];
-        CliqueVec R_new = R; R_new.push_back(v); std::sort(R_new.begin(), R_new.end());
-
-        const auto& N_v = (*adj)[v];
-        CliqueVec P_new = set_intersection_helper(P, N_v);
-        CliqueVec X_new = set_intersection_helper(X, N_v);
-
-        auto child = std::make_shared<BKGenerator>(R_new, P_new, X_new, adj, depth + 1);
-        current_candidate_idx++;
-        return child;
-    }
-};
-
-// Execute Bron-Kerbosch algorithm to find all maximal cliques
+// Although named "executeDivBK" to keep interface compatibility, 
+// this now runs the Standard Recursive Bron-Kerbosch algorithm.
 std::vector<ColocationInstance> MaximalCliqueHashmap::executeDivBK(
 	const std::vector<NeighborSet>& neighborSets) {
-    // Key: <Type, ID>, Value int(0, 1, 2...)
-    std::map<std::pair<FeatureType, InstanceID>, int> uniqueNodeMap;
 
-    // Vector reversed map int -> Pointer
-    std::vector<const SpatialInstance*> internalToInstance;
+	// --- Step 1: Mapping SpatialInstance* to Integer ID (0..N-1) ---
+	std::map<std::pair<FeatureType, InstanceID>, int> uniqueNodeMap;
+	std::vector<const SpatialInstance*> internalToInstance;
+	int nextInternalID = 0;
 
-    int nextInternalID = 0;
+	auto getInternalID = [&](const SpatialInstance* inst) {
+		std::pair<FeatureType, InstanceID> key = { inst->type, inst->id };
+		if (uniqueNodeMap.find(key) == uniqueNodeMap.end()) {
+			uniqueNodeMap[key] = nextInternalID++;
+			internalToInstance.push_back(inst);
+		}
+		return uniqueNodeMap[key];
+		};
 
-    auto getInternalID = [&](const SpatialInstance* inst) {
-		// create unique key
-        std::pair<FeatureType, InstanceID> key = { inst->type, inst->id };
+	// --- Step 2: Build Adjacency List (Dense Graph) ---
+	std::vector<std::set<int>> tempAdj;
+	for (const auto& ns : neighborSets) {
+		int u = getInternalID(ns.center);
+		if (tempAdj.size() <= u) tempAdj.resize(u + 1);
 
-        if (uniqueNodeMap.find(key) == uniqueNodeMap.end()) {
-            uniqueNodeMap[key] = nextInternalID++;
-            internalToInstance.push_back(inst);
-        }
-        return uniqueNodeMap[key];
-        };
+		for (const SpatialInstance* neighbor : ns.neighbors) {
+			int v = getInternalID(neighbor);
+			if (tempAdj.size() <= v) tempAdj.resize(v + 1);
 
-    // Create adjacency graph
-    std::vector<std::set<int>> tempAdj;
+			if (u != v) {
+				tempAdj[u].insert(v);
+				tempAdj[v].insert(u);
+			}
+		}
+	}
 
-    for (const auto& ns : neighborSets) {
-        int u = getInternalID(ns.center);
+	int num_nodes = internalToInstance.size();
+	std::vector<std::vector<int>> adj(num_nodes);
+	for (int i = 0; i < num_nodes; ++i) {
+		if (i < tempAdj.size()) {
+			adj[i].assign(tempAdj[i].begin(), tempAdj[i].end());
+		}
+	}
 
-        if (tempAdj.size() <= u) tempAdj.resize(u + 1);
+	// --- Step 3: Prepare Initial Sets for BK ---
+	CliqueVec R;
+	CliqueVec P(num_nodes); // All nodes [0, 1, ... N-1]
+	for (int i = 0; i < num_nodes; ++i) P[i] = i;
+	CliqueVec X;
 
-        for (const SpatialInstance* neighbor : ns.neighbors) {
-            int v = getInternalID(neighbor);
+	std::vector<CliqueVec> resultIDs;
 
-            if (tempAdj.size() <= v) tempAdj.resize(v + 1);
+	// --- Step 4: Run Recursive Algorithm ---
+	runBronKerbosch(R, P, X, adj, resultIDs);
 
-            // Undirected Graph
-            if (u != v) {
-                tempAdj[u].insert(v);
-                tempAdj[v].insert(u);
-            }
-        }
-    }
+	// --- Step 5: Convert Integer IDs back to ColocationInstance ---
+	std::vector<ColocationInstance> finalResult;
+	finalResult.reserve(resultIDs.size());
 
-    //Change data structure to vector<vector<int>> (Dense Graph Format)
-    int num_nodes = internalToInstance.size();
-    std::vector<std::vector<int>> adj(num_nodes);
-    for (int i = 0; i < num_nodes; ++i) {
-        if (i < tempAdj.size()) {
-            adj[i].assign(tempAdj[i].begin(), tempAdj[i].end());
-        }
-    }
+	for (const auto& clique : resultIDs) {
+		ColocationInstance col;
+		col.reserve(clique.size());
+		for (int id : clique) {
+			col.push_back(internalToInstance[id]);
+		}
+		finalResult.push_back(col);
+	}
 
-    //Execute BK Algorithm
-    CliqueVec V(num_nodes);
-    for (int i = 0; i < num_nodes; ++i) V[i] = i;
+	return finalResult;
+}
 
-    const int DIV_BK_N = 10;
-    std::list<std::shared_ptr<BKGenerator>> active_generators;
-    active_generators.push_back(std::make_shared<BKGenerator>(CliqueVec{}, V, CliqueVec{}, &adj, 0));
-
-    //std::vector<ColocationInstance> flatCliques;
-    std::set<CliqueVec> uniqueCliques;
-
-    while (!active_generators.empty()) {
-        auto it = active_generators.begin();
-        while (it != active_generators.end()) {
-            auto g = *it;
-            auto cliqueOpt = g->nextClique();
-
-            if (cliqueOpt.has_value()) {
-                // --- int -> ColocationInstance ---
-                CliqueVec resultIDs = cliqueOpt.value();
-                std::sort(resultIDs.begin(), resultIDs.end());
-                uniqueCliques.insert(resultIDs);
-
-                /*ColocationInstance colocationResult;
-                colocationResult.reserve(resultIDs.size());*/
-
-                /*for (int id : resultIDs) {
-                    colocationResult.push_back(internalToInstance[id]);
-                }
-
-                flatCliques.push_back(colocationResult);*/
-                ++it;
-            }
-            else {
-                it = active_generators.erase(it);
-            }
-        }
-
-        // Branching logic
-        if (active_generators.size() < DIV_BK_N && !active_generators.empty()) {
-            auto top_it = active_generators.begin();
-            int min_depth = 999999;
-            for (auto it_scan = active_generators.begin(); it_scan != active_generators.end(); ++it_scan) {
-                if ((*it_scan)->depth < min_depth) {
-                    min_depth = (*it_scan)->depth;
-                    top_it = it_scan;
-                }
-            }
-            auto new_gen = (*top_it)->createNextBranch();
-            if (new_gen) active_generators.push_back(new_gen);
-        }
-    }
-
-    // --- CHANGE 3: Chuyển từ Set (Unique) sang Vector Output ---
-    std::vector<ColocationInstance> finalResult;
-    finalResult.reserve(uniqueCliques.size());
-
-    for (const auto& cliqueIDs : uniqueCliques) {
-        if (cliqueIDs.size() < 2) continue;
-        ColocationInstance colocationResult;
-        colocationResult.reserve(cliqueIDs.size());
-
-        for (int id : cliqueIDs) {
-            colocationResult.push_back(internalToInstance[id]);
-        }
-        finalResult.push_back(colocationResult);
-    }
-
-    return finalResult;
-};
-
-// Build instance hashmap from maximal cliques
+// Build instance hashmap from maximal cliques (Remains unchanged logic)
 std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>> MaximalCliqueHashmap::buildInstanceHash(
 	const std::vector<NeighborSet>& neighborSets) {
-    std::vector<ColocationInstance> divBk_result = MaximalCliqueHashmap::executeDivBK(neighborSets);
+
+	std::vector<ColocationInstance> bk_result = MaximalCliqueHashmap::executeDivBK(neighborSets);
 	std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>> hashMap;
-    // Process each clique
-    for (const auto& clique : divBk_result) {
-        // Build colocation key
-        Colocation colocationKey;
-        colocationKey.reserve(clique.size());
-        for (const auto& instancePtr : clique) {
-            colocationKey.push_back(instancePtr->type);
-        }
 
-        std::sort(colocationKey.begin(), colocationKey.end());
+	// Process each clique
+	for (const auto& clique : bk_result) {
+		// Build colocation key
+		Colocation colocationKey;
+		colocationKey.reserve(clique.size());
+		for (const auto& instancePtr : clique) {
+			colocationKey.push_back(instancePtr->type);
+		}
 
-        // Insert instances into hashmap
-        for (const auto& instancePtr : clique) {
-            hashMap[colocationKey][instancePtr->type].insert(instancePtr);
-        }
-    }
+		std::sort(colocationKey.begin(), colocationKey.end());
+
+		// Insert instances into hashmap
+		for (const auto& instancePtr : clique) {
+			hashMap[colocationKey][instancePtr->type].insert(instancePtr);
+		}
+	}
 
 	return hashMap;
-};
+}
 
-// Extract initial candidate colocations from hashmap
+// Extract initial candidate colocations from hashmap (Remains unchanged logic)
 std::priority_queue<Colocation, std::vector<Colocation>, ColocationPriorityComp> MaximalCliqueHashmap::extractInitialCandidates(
 	const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap) {
-    std::priority_queue<Colocation, std::vector<Colocation>, ColocationPriorityComp> candidateQueue;
-    for (const auto& entry : hashMap) {
-        const Colocation& maximalClique = entry.first;
+
+	std::priority_queue<Colocation, std::vector<Colocation>, ColocationPriorityComp> candidateQueue;
+	for (const auto& entry : hashMap) {
+		const Colocation& maximalClique = entry.first;
 		candidateQueue.push(maximalClique);
-    }
+	}
 	return candidateQueue;
-};
+}
