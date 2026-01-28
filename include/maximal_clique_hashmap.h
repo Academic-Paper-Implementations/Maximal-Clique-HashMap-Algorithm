@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file maximal_clique_hashmap.h
  * @brief Maximal clique enumeration and hashmap construction
  */
