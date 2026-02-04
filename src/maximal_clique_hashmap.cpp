@@ -71,20 +71,29 @@ namespace {
 	     */
 
 		 // --- CORE RECURSIVE ALGORITHM ---
+	using ResultMap = std::map<Colocation, std::unordered_map<FeatureType, std::set<const SpatialInstance*>>>;
 
 	void runBronKerbosch(
 		CliqueVec R,
 		CliqueVec P,
 		CliqueVec X,
 		const AdjMap& adj,           // Map tra cứu nhanh neighbors
-		std::vector<ColocationInstance>& final_cliques,
-		int depth = 0)
+		ResultMap& hashMap)
 	{
 		if (P.empty() && X.empty()) {
 			if (R.size() >= 2) {
 				// R chính là ColocationInstance (vector<const SpatialInstance*>)
 				// Không cần convert gì cả, đẩy thẳng vào kết quả!
-				final_cliques.push_back(R);
+				Colocation colocationKey;
+				colocationKey.reserve(R.size());
+				for (const auto& instancePtr : R) {
+					colocationKey.push_back(instancePtr->type);
+				}
+				std::sort(colocationKey.begin(), colocationKey.end());
+				auto& innerMap = hashMap[colocationKey];
+				for (const auto& instancePtr : R) {
+					innerMap[instancePtr->type].insert(instancePtr);
+				}
 			}
 			return;
 		}
@@ -106,7 +115,7 @@ namespace {
 					u_pivot = candidate;
 				}
 			}
-			};
+		};
 
 		for (Node node : P) check_pivot(node);
 		for (Node node : X) check_pivot(node);
@@ -130,12 +139,6 @@ namespace {
 		int total_candidates = 0;
 		int processed_count = 0;
 
-		if (depth == 0) {
-			total_candidates = candidates.size();
-			std::cout << ">>> Start Bron-Kerbosch. Root candidates: " << total_candidates
-				<< " (Optimized from " << P.size() << " nodes by Pivot)" << std::endl;
-		}
-
 		// --- 3. Recursive Step ---
 		for (Node v : candidates) {
 			// Tạo R mới: R U {v}
@@ -156,7 +159,7 @@ namespace {
 			CliqueVec newX = set_intersection_helper(X, neighbors_v);
 
 			// Đệ quy
-			runBronKerbosch(newR, newP, newX, adj, final_cliques, depth + 1);
+			runBronKerbosch(newR, newP, newX, adj, hashMap);
 
 			// --- Backtracking Step ---
 			// Sau khi xét v xong, chuyển v từ P sang X
@@ -175,19 +178,6 @@ namespace {
 			X.insert(itX, v);
 
 			// --- CẬP NHẬT TIẾN ĐỘ ---
-			if (depth == 0) {
-				processed_count++;
-				// In ra mỗi 10 node hoặc 1% để đỡ lag console
-				if (processed_count % 10 == 0 || processed_count == total_candidates) {
-					float percent = (float)processed_count / total_candidates * 100.0f;
-					std::cout << "\r[Progress]: " << processed_count << "/" << total_candidates
-						<< " root branches (" << std::fixed << std::setprecision(1) << percent << "%)" << std::flush;
-				}
-			}
-		}
-		// Xuống dòng khi chạy xong depth 0
-		if (depth == 0) {
-			std::cout << "\r[Progress]: Done! Found " << final_cliques.size() << " maximal cliques.           " << std::endl;
 		}
 	}
 }
@@ -196,13 +186,10 @@ namespace {
 // PUBLIC METHODS IMPLEMENTATION
 // ============================================================================
 
-std::vector<ColocationInstance> MaximalCliqueHashmap::executeDivBK(
+std::map<Colocation, std::unordered_map<FeatureType, std::set<const SpatialInstance*>>> MaximalCliqueHashmap::executeBK(
 	const std::vector<NeighborSet>& neighborSets) {
 
 	// --- Step 1: Build Adjacency Map Directly (Pointer-based) ---
-	// Ta dùng unordered_map<Node, vector<Node>> làm Adjacency List.
-	// KEY: con trỏ center. VALUE: vector các con trỏ neighbors.
-	std::cout << "[MaximalCliqueHashmap] Building Adjacency Map for Bron-Kerbosch...\n";
 	AdjMap adj;
 	// Dự trù bộ nhớ để tránh rehash
 	adj.reserve(neighborSets.size());
@@ -222,56 +209,18 @@ std::vector<ColocationInstance> MaximalCliqueHashmap::executeDivBK(
 		// Move vector đã sort vào map
 		adj[u] = std::move(sorted_neighbors);
 	}
-	std::cout << "Done building Adjacency Map. Total Nodes: " << adj.size() << "\n";
 	// P (tập đỉnh ban đầu) cũng phải được sort
 	std::sort(P.begin(), P.end());
 
 	// --- Step 2: Prepare BK variables ---
 	CliqueVec R; // Tập clique đang xây dựng (rỗng)
 	CliqueVec X; // Tập đỉnh đã xét (rỗng)
-
-	std::vector<ColocationInstance> finalResult;
-	std::cout << "[MaximalCliqueHashmap] Running Bron-Kerbosch Algorithm...\n";
-	// --- Step 3: Run BK Algorithm ---
-	runBronKerbosch(R, P, X, adj, finalResult, 0);
-	std::cout << "Bron-Kerbosch completed. Total Maximal Cliques found: " << finalResult.size() << "\n";
-	return finalResult;
-}
-
-// Build instance hashmap from maximal cliques (Remains unchanged logic)
-std::map<Colocation, std::unordered_map<FeatureType, std::set<const SpatialInstance*>>> MaximalCliqueHashmap::buildInstanceHash(
-	const std::vector<NeighborSet>& neighborSets) {
-	std::cout << "[BuildHash] Executing Bron-Kerbosch..." << std::endl;
-	std::vector<ColocationInstance> bk_result = MaximalCliqueHashmap::executeDivBK(neighborSets);
-
-	std::cout << "[BuildHash] Constructing HashMap from " << bk_result.size() << " cliques..." << std::endl;
 	std::map<Colocation, std::unordered_map<FeatureType, std::set<const SpatialInstance*>>> hashMap;
-
-	Colocation colocationKey;
-	colocationKey.reserve(16);
-
-
-	// Process each clique
-	for (const auto& clique : bk_result) {
-		// Build colocation key
-		colocationKey.clear();
-
-		for (const auto& instancePtr : clique) {
-			colocationKey.push_back(instancePtr->type);
-		}
-
-		std::sort(colocationKey.begin(), colocationKey.end());
-
-		auto& innerMap = hashMap[colocationKey];
-
-		// Insert instances into hashmap
-		for (const auto& instancePtr : clique) {
-			innerMap[instancePtr->type].insert(instancePtr);
-		}
-	}
-	std::cout << "[BuildHash] Done." << std::endl;
+	// --- Step 3: Run BK Algorithm ---
+	runBronKerbosch(R, P, X, adj, hashMap);
 	return hashMap;
 }
+
 
 // Extract initial candidate colocations from hashmap (Remains unchanged logic)
 std::priority_queue<Colocation, std::vector<Colocation>, ColocationPriorityComp> MaximalCliqueHashmap::extractInitialCandidates(

@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     AppConfig config = ConfigLoader::load(config_path);
 
     auto instances = DataLoader::load_csv(config.datasetPath);
-    std::cout << "      Dataset: " << config.datasetPath << " | Size: " << instances.size() << " instances\n";
+    std::cout << "Dataset: " << config.datasetPath << " | Size: " << instances.size() << " instances\n";
 
 
     // --- Step 2: Pre-processing (Indexing & Structures) ---
@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
 
 	// 4. Build Instance Hashmap from Maximal Cliques
 	MaximalCliqueHashmap mcHashmap;
-    auto hashMap = mcHashmap.buildInstanceHash(graph);
+    auto hashMap = mcHashmap.executeBK(graph);
 
 	// 5. Get Candidate Colocations
 	auto candidateQueue = mcHashmap.extractInitialCandidates(hashMap);
