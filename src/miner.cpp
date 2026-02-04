@@ -15,7 +15,7 @@
 // Main mining algorithm: find all prevalent colocation patterns
 std::set<Colocation> Miner::minePCPs(
 	std::priority_queue<Colocation, std::vector<Colocation>, ColocationPriorityComp>& candidateColocations,
-	const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap,
+	const std::map<Colocation, std::unordered_map<FeatureType, std::set<const SpatialInstance*>>>& hashMap,
 	const std::map<FeatureType, int>& featureCounts,
 	double delta,
 	double min_prev) {
@@ -73,7 +73,7 @@ std::set<Colocation> Miner::minePCPs(
 // Query instances of a colocation from hashmap
 std::map<FeatureType, std::set<const SpatialInstance*>> Miner::queryInstances(
 	Colocation c,
-	const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap) {
+	const std::map<Colocation, std::unordered_map<FeatureType, std::set<const SpatialInstance*>>>& hashMap) {
 		//////// TODO: Implement (10)/////////
 
 	std::map<FeatureType, std::set<const SpatialInstance*>> instancesMap;
