@@ -21,7 +21,7 @@
 std::map<FeatureType, int> countAndSortFeatures(const std::vector<SpatialInstance>& instances);
 
 // Calculate dispersion (delta) from feature distribution
-double calculateDirpersion(const std::map<FeatureType, int>& featureCount);
+double calculateDispersion(const std::map<FeatureType, int>& featureCount);
 
 // Calculate rare intensity for each instance in a colocation
 std::unordered_map<FeatureType, double> calcRareIntensity(

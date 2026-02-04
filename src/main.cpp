@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     auto featureCount = countAndSortFeatures(instances);
 
 	// 2. Delta Calculation
-	double delta = calculateDirpersion(featureCount);
+	double delta = calculateDispersion(featureCount);
 
 	// 3. Neighbor Graph Building
     NeighborGraph neighborGraph;
