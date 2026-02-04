@@ -83,20 +83,10 @@ std::map<FeatureType, std::set<const SpatialInstance*>> Miner::queryInstances(
 		const auto& cliqueInstances = entry.second;
 
 		// Check if c is a subset of maximalClique
-		bool isSubset = true;
-		for (const auto& f : c) {
-			bool found = false;
-			for (const auto& mf : maximalClique) {
-				if (mf == f) {
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				isSubset = false;
-				break;
-			}
-		}
+		bool isSubset = std::includes(
+			maximalClique.begin(), maximalClique.end(),
+			c.begin(), c.end()
+		);
 
 		// If c is a subset, merge instances
 		if (isSubset) {

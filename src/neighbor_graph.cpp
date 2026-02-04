@@ -59,8 +59,8 @@ std::vector<NeighborSet> NeighborGraph::buildNeighborGraph(
 
 	// 2. Map InstanceID to memory address for stable graph construction
 	std::unordered_map<InstanceID, const SpatialInstance*> ptrMap;
-	for (const auto& inst : instances) {
-		ptrMap[inst.id] = &inst;
+	for (size_t i = 0; i < instances.size(); ++i) {
+		ptrMap[instances[i].id] = &instances[i];
 	}
 
 	// 3. Build Adjacency List

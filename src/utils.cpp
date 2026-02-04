@@ -29,7 +29,7 @@ std::map<FeatureType, int> countAndSortFeatures(
 };
 
 // Calculate dispersion (delta) from feature distribution
-double calculateDirpersion(const std::map<FeatureType, int>& featureCount) {
+double calculateDispersion(const std::map<FeatureType, int>& featureCount) {
 		//////// TODO: Implement (2)//////////
     if (featureCount.empty()) return 0.0;
     if (featureCount.size() == 1) return 0.0; // Cannot calculate std dev with 1 item
