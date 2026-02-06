@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file miner.cpp
  * @brief Implementation: Mining prevalent colocation patterns using weighted PI
  */
@@ -14,61 +14,66 @@
 
 // Main mining algorithm: find all prevalent colocation patterns
 std::set<Colocation> Miner::minePCPs(
-	std::priority_queue<Colocation>& candidateColocations,
-	const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap,
+	std::priority_queue<Colocation, std::vector<Colocation>, ColocationPriorityComp>& candidateColocations,
+	const std::map<Colocation, std::unordered_map<FeatureType, std::set<const SpatialInstance*>>>& hashMap,
 	const std::map<FeatureType, int>& featureCounts,
 	double delta,
 	double min_prev) {
 
 	std::set<Colocation> prevalentPCs;
 	std::set<Colocation> nonPrevalentPCs;
-	std::set<Colocation> newCs = {};
+	std::set<Colocation> visited;
 
 	while (!candidateColocations.empty()) {
 		Colocation c = candidateColocations.top();
 		candidateColocations.pop();
 
-		if (prevalentPCs.find(c) == prevalentPCs.end() && 
-			nonPrevalentPCs.find(c) == nonPrevalentPCs.end()) {
+		if (visited.count(c)) continue;
+		visited.insert(c);
 
-			auto partInstances = queryInstances(c, hashMap);
-			auto rareIntensityMap = calcRareIntensity(c, featureCounts, delta);
-			
-			// 5. Calculate Weighted PI
-			// Note: Changed signature of computeWeightedPI as per user authorization to include featureCounts
-			double weightedPI = computeWeightedPI(partInstances, c, rareIntensityMap, featureCounts);
-			newCs = generateSubsets(c);
+		std::set<Colocation> newCs;
 
-			if (weightedPI >= min_prev) {
-				prevalentPCs.insert(c);
-				auto prevalentSubsets = deducePrevalentSubsets(newCs, c);
-				for (const auto& subset : prevalentSubsets) {
-					prevalentPCs.insert(subset);
-				}
+		auto partInstances = queryInstances(c, hashMap);
+		auto rareIntensityMap = calcRareIntensity(c, featureCounts, delta);
 
-				std::set<Colocation> filteredSubsets;
-				for (const auto& subset : newCs) {
-					if (prevalentSubsets.find(subset) == prevalentSubsets.end()) {
-						filteredSubsets.insert(subset);
-					}
+		double weightedPI = computeWeightedPI(partInstances, c, rareIntensityMap, featureCounts);
+		newCs = generateSubsets(c);
+
+		if (weightedPI >= min_prev) {
+			prevalentPCs.insert(c);
+
+			auto prevalentSubsets = deducePrevalentSubsets(newCs, c, featureCounts);
+			for (const auto& subset : prevalentSubsets) {
+				prevalentPCs.insert(subset);
+			}
+
+			std::set<Colocation> filteredSubsets;
+			for (const auto& subset : newCs) {
+				if (!prevalentSubsets.count(subset)) {
+					filteredSubsets.insert(subset);
 				}
 			}
-			else {
-				nonPrevalentPCs.insert(c);
-			}
+			newCs = filteredSubsets;
 		}
+		else {
+			nonPrevalentPCs.insert(c);
+		}
+
 		for (const auto& subset : newCs) {
-			candidateColocations.push(subset);
+			if (!visited.count(subset)) {
+				candidateColocations.push(subset);
+			}
 		}
 	}
+
 	return prevalentPCs;
-};
+}
 
 
 // Query instances of a colocation from hashmap
 std::map<FeatureType, std::set<const SpatialInstance*>> Miner::queryInstances(
 	Colocation c,
-	const std::map<Colocation, std::map<FeatureType, std::set<const SpatialInstance*>>>& hashMap) {
+	const std::map<Colocation, std::unordered_map<FeatureType, std::set<const SpatialInstance*>>>& hashMap) {
 		//////// TODO: Implement (10)/////////
 
 	std::map<FeatureType, std::set<const SpatialInstance*>> instancesMap;
@@ -78,20 +83,10 @@ std::map<FeatureType, std::set<const SpatialInstance*>> Miner::queryInstances(
 		const auto& cliqueInstances = entry.second;
 
 		// Check if c is a subset of maximalClique
-		bool isSubset = true;
-		for (const auto& f : c) {
-			bool found = false;
-			for (const auto& mf : maximalClique) {
-				if (mf == f) {
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				isSubset = false;
-				break;
-			}
-		}
+		bool isSubset = std::includes(
+			maximalClique.begin(), maximalClique.end(),
+			c.begin(), c.end()
+		);
 
 		// If c is a subset, merge instances
 		if (isSubset) {
@@ -111,7 +106,7 @@ std::map<FeatureType, std::set<const SpatialInstance*>> Miner::queryInstances(
 double Miner::computeWeightedPI(
 	const std::map<FeatureType, std::set<const SpatialInstance*>>& partInstances,
 	Colocation c,
-	const std::unordered_map<InstanceID, double>& rareIntensityMap,
+	const std::unordered_map<FeatureType, double>& rareIntensityMap,
 	const std::map<FeatureType, int>& featureCounts) {
 		//////// TODO: Implement (12)/////////
 	if (c.empty()) return 0.0;
@@ -130,7 +125,7 @@ double Miner::computeWeightedPI(
 			totalCount = featureCounts.at(f);
 		}
 
-		if (totalCount == 0) continue; // Should not happen
+		if (totalCount == 0) continue;
 
 		double pr = static_cast<double>(count) / totalCount;
 
@@ -161,22 +156,59 @@ double Miner::computeWeightedPI(
 
 // Generate all size-1 subsets (remove one feature at a time)
 std::set<Colocation> Miner::generateSubsets(const Colocation& c) {
-	//////////////////////////////////////
-	//////// TODO: Implement (13)/////////
-	//////////////////////////////////////
+	std::set<Colocation> subsets;
+	if (c.size() <= 2) return subsets;
 
-	return {};
-
+	for (size_t i = 0; i < c.size(); ++i) {
+		Colocation sub = c;
+		sub.erase(sub.begin() + i);
+		subsets.insert(sub);
+	}
+	return subsets;
 };
 
 // Deduce prevalent subsets using downward closure property
 std::set<Colocation> Miner::deducePrevalentSubsets(
 	std::set<Colocation>& subsets,
-	const Colocation& c){
-	//////////////////////////////////////
-	//////// TODO: Implement (16)/////////
-	//////////////////////////////////////
+	const Colocation& c,
+	const std::map<FeatureType, int>& featureCounts) {
+	
+	std::set<Colocation> provenPrevalent;
+	
+	// 1. Find f_min (feature with min frequency) in parent c
+	FeatureType f_min;
+	int minCount = -1;
 
-	return {};
+	for (const auto& f : c) {
+		int count = 0;
+		if (featureCounts.count(f)) {
+			count = featureCounts.at(f);
+		}
+		
+		if (minCount == -1 || count < minCount) {
+			minCount = count;
+			f_min = f;
+		} else if (count == minCount) {
+			// Optional tie-breaker
+			if (f < f_min) f_min = f;
+		}
+	}
 
+	// 2. Lemma 2: If C is prevalent, any subset C' containing f_min is also prevalent.
+	if (!f_min.empty()) {
+		for (const auto& subset : subsets) {
+			bool hasMinFeature = false;
+			for (const auto& f : subset) {
+				if (f == f_min) {
+					hasMinFeature = true;
+					break;
+				}
+			}
+
+			if (hasMinFeature) {
+				provenPrevalent.insert(subset);
+			}
+		}
+	}
+	return provenPrevalent;
 };

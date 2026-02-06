@@ -8,7 +8,7 @@ project ("Colocation Mining with Maximal Clique & Rare Feature")
 
 set (CMAKE_CXX_STANDARD 17)
 
-# ==============================================================================
+# =============================================================================
 # Include & Source
 # ==============================================================================
 include_directories ("${CMAKE_SOURCE_DIR}/include")

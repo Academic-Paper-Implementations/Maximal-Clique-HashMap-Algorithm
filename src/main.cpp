@@ -13,6 +13,7 @@
 #include <iostream>
 #include <chrono>
 #include <iomanip>
+#include <cmath>
 
 int main(int argc, char* argv[]) {
     auto programStart = std::chrono::high_resolution_clock::now();
@@ -24,7 +25,7 @@ int main(int argc, char* argv[]) {
     AppConfig config = ConfigLoader::load(config_path);
 
     auto instances = DataLoader::load_csv(config.datasetPath);
-    std::cout << "      Dataset: " << config.datasetPath << " | Size: " << instances.size() << " instances\n";
+    std::cout << "Dataset: " << config.datasetPath << " | Size: " << instances.size() << " instances\n";
 
 
     // --- Step 2: Pre-processing (Indexing & Structures) ---
@@ -34,7 +35,7 @@ int main(int argc, char* argv[]) {
     auto featureCount = countFeatures(instances);
 
 	// 2. Delta Calculation
-	double delta = calculateDirpersion(featureCount);
+	double delta = calculateDispersion(featureCount);
 
 	// 3. Neighbor Graph Building
     NeighborGraph neighborGraph;
@@ -42,7 +43,7 @@ int main(int argc, char* argv[]) {
 
 	// 4. Build Instance Hashmap from Maximal Cliques
 	MaximalCliqueHashmap mcHashmap;
-    auto hashMap = mcHashmap.buildInstanceHash(graph);
+    auto hashMap = mcHashmap.executeBK(graph);
 
 	// 5. Get Candidate Colocations
 	auto candidateQueue = mcHashmap.extractInitialCandidates(hashMap);
@@ -57,11 +58,11 @@ int main(int argc, char* argv[]) {
         featureCount,
         delta,
         config.minPrev
-	);
+    );
 
     // --- Final Report ---
     auto programEnd = std::chrono::high_resolution_clock::now();
-    double totalTime = std::chrono::duration<double>(programEnd - programStart).count();;
+    double totalTime = std::chrono::duration<double>(programEnd - programStart).count();
 
     std::cout << "\n" << std::string(40, '=') << "\n";
     std::cout << "SUMMARY REPORT\n";
@@ -81,7 +82,7 @@ int main(int argc, char* argv[]) {
     }
     else {
         std::cout << "No patterns found.\n";
-    }
+   }
 
     return 0;
 }

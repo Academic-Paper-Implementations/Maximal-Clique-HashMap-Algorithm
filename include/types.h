@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file types.h
  * @brief Core data type definitions for spatial colocation pattern mining
  *
@@ -51,4 +51,20 @@ struct SpatialInstance {
 struct NeighborSet {
     const SpatialInstance* center;                      ///< Center instance
     std::vector<const SpatialInstance*> neighbors;      ///< All neighbors within distance threshold
+};
+
+/**
+ * @brief comparator for prioritizing colocations in a priority queue
+ * Rules:
+ * 1. Prioritize larger Colocation sizes.
+ * 2. If sizes are equal, prioritize smaller lexicographical order (A before B).
+ */
+struct ColocationPriorityComp {
+    bool operator()(const Colocation& a, const Colocation& b) const {
+        // If sizes are different: The smaller one has lower priority (return true)
+        if (a.size() != b.size()) {
+            return a.size() < b.size();
+        }
+        return a > b;
+    }
 };
