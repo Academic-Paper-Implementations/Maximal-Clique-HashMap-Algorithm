@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "[2/3] Building Graph Structures and Hashmap...\n";
 
     // 1. Feature Counting & Sorting
-    auto featureCount = countAndSortFeatures(instances);
+    auto featureCount = countFeatures(instances);
 
 	// 2. Delta Calculation
 	double delta = calculateDirpersion(featureCount);
