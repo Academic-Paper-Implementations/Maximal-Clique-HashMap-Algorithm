@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file utils.cpp
  * @brief Implementation: Feature counting, dispersion calculation, and rare intensity
  */
@@ -18,7 +18,7 @@
 #include <numeric>
 
 // Count instances per feature type and sort by frequency (ascending)
-std::map<FeatureType, int> countAndSortFeatures(
+std::map<FeatureType, int> countFeatures(
 	const std::vector<SpatialInstance>& instances) {
 	//////// TODO: Implement (1)//////////
 	std::map<FeatureType, int> counts;
@@ -30,35 +30,51 @@ std::map<FeatureType, int> countAndSortFeatures(
 
 // Calculate dispersion (delta) from feature distribution
 double calculateDispersion(const std::map<FeatureType, int>& featureCount) {
-		//////// TODO: Implement (2)//////////
-    if (featureCount.empty()) return 0.0;
-    if (featureCount.size() == 1) return 0.0; // Cannot calculate std dev with 1 item
+	//////// TODO: Implement (2)//////////
+	if (featureCount.empty()) return 0.0;
+	if (featureCount.size() == 1) return 0.0;
 
-    std::vector<double> logCounts;
-    logCounts.reserve(featureCount.size());
+	// --- Bước 1: Trích xuất và Sắp xếp (Sort) ---
+	// Chuyển tần suất từ Map sang Vector để sắp xếp
+	std::vector<double> frequencies;
+	frequencies.reserve(featureCount.size());
 
-    // 1. Calculate ln(N(fi))
-    for (const auto& pair : featureCount) {
-        logCounts.push_back(std::log(static_cast<double>(pair.second)));
-    }
+	for (const auto& pair : featureCount) {
+		frequencies.push_back(static_cast<double>(pair.second));
+	}
 
-    size_t m = logCounts.size();
-    if (m < 2) return 0.0;
+	// Sắp xếp tăng dần (Ascending) theo yêu cầu
+	std::sort(frequencies.begin(), frequencies.end());
 
-    // 2. Calculate mean of log counts
-    double sumLog = std::accumulate(logCounts.begin(), logCounts.end(), 0.0);
-    double meanLog = sumLog / m;
+	// --- Bước 2: Tính Logarit tự nhiên (ln) cho từng phần tử ---
+	// Tính trước log để tránh gọi hàm log() nhiều lần trong vòng lặp lồng nhau
+	std::vector<double> logFrequencies;
+	logFrequencies.reserve(frequencies.size());
+	for (double f : frequencies) {
+		logFrequencies.push_back(std::log(f)); // ln(N(fi))
+	}
 
-    // 3. Calculate sum of squared differences
-    double sumSqDiff = 0.0;
-    for (double val : logCounts) {
-        sumSqDiff += (val - meanLog) * (val - meanLog);
-    }
+	// --- Bước 3: Tính tổng bình phương hiệu các cặp (Sum of squared pairwise differences) ---
+	// Công thức: sum_{i<j} (ln(Nj) - ln(Ni))^2
+	double sumSqDiff = 0.0;
+	size_t m = logFrequencies.size();
 
-    // 4. Calculate standard deviation (sample base: m-1)
-    double variance = sumSqDiff / (m - 1);
-    
-    return std::sqrt(variance);
+	for (size_t i = 0; i < m; ++i) {
+		for (size_t j = i + 1; j < m; ++j) {
+			// ln(Nj / Ni) = ln(Nj) - ln(Ni)
+			// Vì đã sort tăng dần và j > i, nên logFrequencies[j] >= logFrequencies[i]
+			double diff = logFrequencies[j] - logFrequencies[i];
+			sumSqDiff += diff * diff;
+		}
+	}
+
+	// --- Bước 4: Áp dụng hệ số tỉ lệ và Căn bậc hai ---
+	// Hệ số: 2 / (m * (m - 1))
+	double factor = 2.0 / (static_cast<double>(m) * (static_cast<double>(m) - 1.0));
+
+	double sigma_log = std::sqrt(factor * sumSqDiff);
+
+	return sigma_log;
 };
 
 // Calculate rare intensity for each instance in a colocation

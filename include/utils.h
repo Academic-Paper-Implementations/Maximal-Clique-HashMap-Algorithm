@@ -18,7 +18,7 @@
 // ============================================================================
 
 // Count instances per feature type and sort by frequency
-std::map<FeatureType, int> countAndSortFeatures(const std::vector<SpatialInstance>& instances);
+std::map<FeatureType, int> countFeatures(const std::vector<SpatialInstance>& instances);
 
 // Calculate dispersion (delta) from feature distribution
 double calculateDispersion(const std::map<FeatureType, int>& featureCount);

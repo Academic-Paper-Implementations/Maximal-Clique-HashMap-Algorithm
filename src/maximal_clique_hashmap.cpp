@@ -135,9 +135,6 @@ namespace {
 			candidates = P;
 		}
 
-		// --- LOGIC HIỂN THỊ TIẾN ĐỘ (Chỉ chạy ở Depth 0) ---
-		int total_candidates = 0;
-		int processed_count = 0;
 
 		// --- 3. Recursive Step ---
 		for (Node v : candidates) {
