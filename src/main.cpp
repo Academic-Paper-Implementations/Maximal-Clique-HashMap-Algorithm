@@ -14,23 +14,24 @@
 #include <chrono>
 #include <iomanip>
 #include <cmath>
+#include <fstream>
+
+//Show memmory usage
+#include <windows.h>
+#include <psapi.h>
+#include <stdio.h>
+#pragma comment(lib, "psapi.lib")
 
 int main(int argc, char* argv[]) {
     auto programStart = std::chrono::high_resolution_clock::now();
-
-
     // --- Step 1: Config & Load Data ---
-    std::cout << "[1/3] Loading Configuration and Data...\n";
+    std::cout << "Running... (Results will be saved to result.txt)\n";
     std::string config_path = (argc > 1) ? argv[1] : "./config/config.txt";
     AppConfig config = ConfigLoader::load(config_path);
 
     auto instances = DataLoader::load_csv(config.datasetPath);
-    std::cout << "Dataset: " << config.datasetPath << " | Size: " << instances.size() << " instances\n";
-
 
     // --- Step 2: Pre-processing (Indexing & Structures) ---
-	std::cout << "[2/3] Building Graph Structures and Hashmap...\n";
-
     // 1. Feature Counting & Sorting
     auto featureCount = countFeatures(instances);
 
@@ -49,8 +50,6 @@ int main(int argc, char* argv[]) {
 	auto candidateQueue = mcHashmap.extractInitialCandidates(hashMap);
 
     // --- Step 3: Mining Prevalent Co-location Patterns ---
-    std::cout << "[3/3] Mining Patterns (MinPrev: " << config.minPrev << ", Dist: " << config.neighborDistance << ")...\n";
-
     Miner miner;
     auto colocations = miner.minePCPs(
         candidateQueue,
@@ -60,29 +59,61 @@ int main(int argc, char* argv[]) {
         config.minPrev
     );
 
-    // --- Final Report ---
+    // --- END OF PROCESSING ---
     auto programEnd = std::chrono::high_resolution_clock::now();
     double totalTime = std::chrono::duration<double>(programEnd - programStart).count();
 
-    std::cout << "\n" << std::string(40, '=') << "\n";
-    std::cout << "SUMMARY REPORT\n";
-    std::cout << "Time:   " << std::fixed << std::setprecision(3) << totalTime << " s\n";
-    std::cout << "Found:  " << colocations.size() << " patterns\n";
-    std::cout << std::string(40, '=') << "\n";
+    // --- REPORT GENERATION (FILE ONLY) ---
+    // 1. Get Memory Info (Peak)
+    HANDLE handle = GetCurrentProcess();
+    PROCESS_MEMORY_COUNTERS memCounter;
+    SIZE_T peakMemMB = 0;
 
+    if (GetProcessMemoryInfo(handle, &memCounter, sizeof(memCounter))) {
+        peakMemMB = memCounter.PeakWorkingSetSize / 1024 / 1024; // Convert to MB
+    }
+
+    // 2. Write to File
+    std::ofstream outFile("../results.txt");
+    if (!outFile.is_open()) {
+        std::cerr << "Cannot open results.txt for writing.\n";
+        return 1;
+    }
+    // (A) Thông tin Dataset & Config
+    outFile << "=== FINAL REPORT ===\n";
+    outFile << "Dataset Path:      " << config.datasetPath << "\n";
+    outFile << "Total Instances:   " << instances.size() << "\n";
+    outFile << "Neighbor Distance: " << config.neighborDistance << "\n";
+    outFile << "Min Prevalence:    " << config.minPrev << "\n";
+    outFile << "----------------------------------------\n";
+
+	// (B) Execution Time
+    outFile << "Execution Time: " << std::fixed << std::setprecision(3) << totalTime << " s\n";
+
+    // (C) Peak Memory Usage
+    outFile << "Peak Memory Usage: " << peakMemMB << " MB\n";
+
+	// (D) Number of Patterns Found
+    outFile << "Patterns Found: " << colocations.size() << "\n";
+    outFile << "----------------------------------------\n";
+
+	// (E) List of Patterns
     if (!colocations.empty()) {
         int idx = 1;
         for (const auto& col : colocations) {
-            std::cout << "[" << idx++ << "] {";
+            outFile << "[" << idx++ << "] {";
             for (size_t i = 0; i < col.size(); ++i) {
-                std::cout << (i > 0 ? ", " : "") << col[i];
+                outFile << (i > 0 ? ", " : "") << col[i];
             }
-            std::cout << "}\n";
+            outFile << "}\n";
         }
     }
     else {
-        std::cout << "No patterns found.\n";
-   }
+        outFile << "No patterns found.\n";
+    }
 
+    outFile.close();
+
+    std::cout << "Done! Please check 'result.txt'.\n";
     return 0;
 }
