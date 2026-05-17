@@ -21,6 +21,13 @@ public:
         const ColocationResult& results
     );
 
+    static void exportPCPsToSQLite(
+        const std::string& dbPath,
+        const std::set<Colocation>& prevalentPCs,
+        const std::map<Colocation, bool>& deducedMap,
+        double minPrev
+    );
+
     static void exportSummaryJson(
         const std::string& jsonPath,
         const ColocationResult& results

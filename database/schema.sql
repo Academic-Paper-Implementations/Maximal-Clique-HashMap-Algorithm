@@ -69,3 +69,42 @@ ON colocation_members(feature);
 
 CREATE INDEX idx_members_instance
 ON colocation_members(instance_idx);
+
+
+-- ============================================================================
+-- Prevalent Co-location Patterns (PCP) Tables
+-- ============================================================================
+
+CREATE TABLE prevalent_colocations (
+    prevalent_id INTEGER PRIMARY KEY,
+    feature_key TEXT NOT NULL UNIQUE,
+    size INTEGER NOT NULL,
+
+    is_deduced INTEGER NOT NULL DEFAULT 0,
+    min_prev REAL NOT NULL
+);
+
+CREATE TABLE prevalent_colocation_features (
+    prevalent_id INTEGER NOT NULL,
+    feature TEXT NOT NULL,
+    feature_order INTEGER NOT NULL,
+
+    PRIMARY KEY (prevalent_id, feature),
+
+    FOREIGN KEY (prevalent_id)
+        REFERENCES prevalent_colocations(prevalent_id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX idx_pc_feature_key
+ON prevalent_colocations(feature_key);
+
+CREATE INDEX idx_pc_size
+ON prevalent_colocations(size);
+
+CREATE INDEX idx_pcf_prevalent_feature
+ON prevalent_colocation_features(prevalent_id, feature);
+
+CREATE INDEX idx_pcf_feature_prevalent
+ON prevalent_colocation_features(feature, prevalent_id);
+

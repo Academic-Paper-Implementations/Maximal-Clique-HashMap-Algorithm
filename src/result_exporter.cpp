@@ -60,14 +60,19 @@ void ResultExporter::exportToSQLite(
     }
 
     try {
-        execSQL(db, "PRAGMA journal_mode = WAL;");
         execSQL(db, "PRAGMA synchronous = NORMAL;");
         execSQL(db, "PRAGMA temp_store = MEMORY;");
-
-        execSQL(db, "BEGIN TRANSACTION;");
+        execSQL(db, "PRAGMA foreign_keys = ON;");
+        execSQL(db, "PRAGMA journal_mode = WAL;");
+        execSQL(db, "PRAGMA locking_mode = NORMAL;");
+        execSQL(db, "PRAGMA cache_size = 10000;");
 
         const std::string schemaSql = readFileToString(schemaPath);
         execSQL(db, schemaSql);
+
+        auto ptrToIndex = buildPointerToIndexMap(instances);
+
+        execSQL(db, "BEGIN TRANSACTION;");
 
         sqlite3_stmt* insertInstanceStmt = nullptr;
         sqlite3_prepare_v2(
@@ -99,8 +104,6 @@ void ResultExporter::exportToSQLite(
         }
 
         sqlite3_finalize(insertInstanceStmt);
-
-        auto ptrToIndex = buildPointerToIndexMap(instances);
 
         sqlite3_stmt* insertColocationStmt = nullptr;
         sqlite3_prepare_v2(
@@ -201,17 +204,136 @@ void ResultExporter::exportToSQLite(
             colocationId++;
         }
 
+        execSQL(db, "COMMIT;");
+
         sqlite3_finalize(insertColocationStmt);
         sqlite3_finalize(insertFeatureStmt);
         sqlite3_finalize(insertMemberStmt);
-
-        execSQL(db, "COMMIT;");
 
         sqlite3_close(db);
 
         std::cout << "Exported SQLite result to: " << dbPath << std::endl;
     } catch (...) {
-        execSQL(db, "ROLLBACK;");
+        sqlite3_close(db);
+        throw;
+    }
+}
+
+
+void ResultExporter::exportPCPsToSQLite(
+    const std::string& dbPath,
+    const std::set<Colocation>& prevalentPCs,
+    const std::map<Colocation, bool>& deducedMap,
+    double minPrev
+) {
+    if (prevalentPCs.empty()) {
+        std::cout << "No prevalent PCPs to export.\n";
+        return;
+    }
+
+    sqlite3* db = nullptr;
+    int rc = sqlite3_open(dbPath.c_str(), &db);
+    if (rc != SQLITE_OK) {
+        std::string error = sqlite3_errmsg(db);
+        sqlite3_close(db);
+        throw std::runtime_error("Cannot open SQLite DB: " + error);
+    }
+
+    try {
+        execSQL(db, "PRAGMA foreign_keys = ON;");
+        execSQL(db, "PRAGMA journal_mode = WAL;");
+        execSQL(db, "PRAGMA locking_mode = NORMAL;");
+        execSQL(db, "PRAGMA cache_size = 10000;");
+
+        // Tables prevalent_colocations and prevalent_colocation_features
+        // are already created by schema.sql (executed in exportToSQLite).
+        // We only need to clear old data and recreate indexes.
+        execSQL(db, "DELETE FROM prevalent_colocations;");
+        execSQL(db, "DELETE FROM prevalent_colocation_features;");
+        execSQL(db, "DROP INDEX IF EXISTS idx_pc_feature_key;");
+        execSQL(db, "DROP INDEX IF EXISTS idx_pc_size;");
+        execSQL(db, "DROP INDEX IF EXISTS idx_pcf_prevalent_feature;");
+        execSQL(db, "DROP INDEX IF EXISTS idx_pcf_feature_prevalent;");
+        execSQL(db, "CREATE INDEX idx_pc_feature_key ON prevalent_colocations(feature_key);");
+        execSQL(db, "CREATE INDEX idx_pc_size ON prevalent_colocations(size);");
+        execSQL(db, "CREATE INDEX idx_pcf_prevalent_feature ON prevalent_colocation_features(prevalent_id, feature);");
+        execSQL(db, "CREATE INDEX idx_pcf_feature_prevalent ON prevalent_colocation_features(feature, prevalent_id);");
+
+        sqlite3_stmt* insertPCStmt = nullptr;
+        sqlite3_prepare_v2(
+            db,
+            R"SQL(
+                INSERT INTO prevalent_colocations (
+                    feature_key, size, is_deduced, min_prev
+                ) VALUES (?, ?, ?, ?);
+            )SQL",
+            -1,
+            &insertPCStmt,
+            nullptr
+        );
+
+        sqlite3_stmt* insertFeatureStmt = nullptr;
+        sqlite3_prepare_v2(
+            db,
+            R"SQL(
+                INSERT INTO prevalent_colocation_features (
+                    prevalent_id, feature, feature_order
+                ) VALUES (?, ?, ?);
+            )SQL",
+            -1,
+            &insertFeatureStmt,
+            nullptr
+        );
+
+        execSQL(db, "BEGIN TRANSACTION;");
+
+        int prevalentId = 1;
+        for (const auto& col : prevalentPCs) {
+            std::string featureKey = makeFeatureKey(col);
+
+            bool isDeduced = false;
+            auto it = deducedMap.find(col);
+            if (it != deducedMap.end()) {
+                isDeduced = it->second;
+            }
+
+            sqlite3_bind_text(insertPCStmt, 1, featureKey.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(insertPCStmt, 2, static_cast<int>(col.size()));
+            sqlite3_bind_int(insertPCStmt, 3, isDeduced ? 1 : 0);
+            sqlite3_bind_double(insertPCStmt, 4, minPrev);
+
+            if (sqlite3_step(insertPCStmt) != SQLITE_DONE) {
+                throw std::runtime_error("Failed to insert prevalent colocation");
+            }
+
+            sqlite3_reset(insertPCStmt);
+
+            for (size_t order = 0; order < col.size(); ++order) {
+                const auto& feature = col[order];
+                sqlite3_bind_int(insertFeatureStmt, 1, prevalentId);
+                sqlite3_bind_text(insertFeatureStmt, 2, feature.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_bind_int(insertFeatureStmt, 3, static_cast<int>(order));
+
+                if (sqlite3_step(insertFeatureStmt) != SQLITE_DONE) {
+                    throw std::runtime_error("Failed to insert prevalent colocation feature");
+                }
+
+                sqlite3_reset(insertFeatureStmt);
+            }
+
+            prevalentId++;
+        }
+
+        sqlite3_finalize(insertPCStmt);
+        sqlite3_finalize(insertFeatureStmt);
+
+        execSQL(db, "COMMIT;");
+
+        sqlite3_close(db);
+
+        std::cout << "Exported " << prevalentPCs.size()
+                  << " prevalent PCPs to: " << dbPath << std::endl;
+    } catch (...) {
         sqlite3_close(db);
         throw;
     }
