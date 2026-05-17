@@ -21,6 +21,9 @@ struct AppConfig {
     // I/O Settings
     std::string datasetPath;    ///< Path to input CSV dataset file
     std::string outputPath;     ///< Path to output results file
+    std::string schemaPath;     ///< Path to SQLite schema file
+    std::string outputDbPath;   ///< Path to output SQLite database
+    std::string summaryJsonPath; ///< Path to summary JSON file
 
     // Algorithm Parameters
     double neighborDistance;    ///< Distance threshold for spatial neighbors
@@ -40,6 +43,9 @@ struct AppConfig {
     AppConfig()
         : datasetPath("data/sample_data.csv"),
         outputPath("src/c++/output/rules.txt"),
+        schemaPath("database/schema.sql"),
+        outputDbPath("results/result.db"),
+        summaryJsonPath("results/summary.json"),
         neighborDistance(5.0),
         minPrev(0.6),
         minCondProb(0.5),

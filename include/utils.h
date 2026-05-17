@@ -28,3 +28,7 @@ std::unordered_map<FeatureType, double> calcRareIntensity(
 	Colocation c,
 	const std::map<FeatureType, int>& featureCounts,
 	double delta);
+
+// Build pointer-to-index map for stable ID export
+std::unordered_map<const SpatialInstance*, int> buildPointerToIndexMap(
+	const std::vector<SpatialInstance>& instances);

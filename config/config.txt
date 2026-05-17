@@ -1,6 +1,9 @@
 # I/O Paths
 dataset_path=data/LasVegas_x_y_alphabet_version_03_2.csv
 output_path=results/colocation_rules.txt
+schema_path=database/schema.sql
+output_db_path=results/result.db
+summary_json_path=results/summary.json
 
 # Algorithm Thresholds
 neighbor_distance=160

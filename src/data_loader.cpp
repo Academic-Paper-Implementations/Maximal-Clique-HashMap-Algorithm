@@ -37,10 +37,15 @@ std::vector<SpatialInstance> DataLoader::load_csv(const std::string& filepath, d
     for (auto& row : reader) {
         SpatialInstance instance;
 
+        instance.idx = static_cast<int>(allInstances.size()); // 0-based index
         instance.type = row["Feature"].get<FeatureType>();
         instance.id = instance.type + std::to_string(row["Instance"].get<int>());
         instance.x = row[xCol].get<double>();
         instance.y = row[yCol].get<double>();
+
+        // Read Checkin column if it exists
+        auto hasCheckin = hasColumn("Checkin");
+        instance.checkin = hasCheckin ? row["Checkin"].get<int>() : 0;
 
         allInstances.push_back(instance);
     }
@@ -75,6 +80,11 @@ std::vector<SpatialInstance> DataLoader::load_csv(const std::string& filepath, d
         for (size_t i = 0; i < keepCount; ++i) {
             sampledInstances.push_back(group[i]);
         }
+    }
+
+    // Re-assign idx to ensure consecutive 0-based indices
+    for (size_t i = 0; i < sampledInstances.size(); ++i) {
+        sampledInstances[i].idx = static_cast<int>(i);
     }
 
     std::cout << "Reduced dataset from " << allInstances.size()

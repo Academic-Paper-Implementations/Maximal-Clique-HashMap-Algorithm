@@ -124,3 +124,16 @@ std::unordered_map<FeatureType, double> calcRareIntensity(
 
 	return intensityMap;
 };
+
+// Build pointer-to-index map for stable ID export
+std::unordered_map<const SpatialInstance*, int> buildPointerToIndexMap(
+	const std::vector<SpatialInstance>& instances) {
+	std::unordered_map<const SpatialInstance*, int> ptrToIndex;
+	ptrToIndex.reserve(instances.size());
+
+	for (const auto& instance : instances) {
+		ptrToIndex[&instance] = instance.idx;
+	}
+
+	return ptrToIndex;
+};

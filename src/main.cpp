@@ -8,6 +8,7 @@
 #include "neighbor_graph.h"
 #include "maximal_clique_hashmap.h"
 #include "miner.h"
+#include "result_exporter.h"
 #include "types.h"
 #include "utils.h"
 #include <iostream>
@@ -34,6 +35,7 @@ int main(int argc, char* argv[]) {
     AppConfig config = ConfigLoader::load(config_path);
 
     auto instances = DataLoader::load_csv(config.datasetPath, config.percentageData);
+    auto ptrToIndex = buildPointerToIndexMap(instances);
 
     // --- Step 2: Pre-processing (Indexing & Structures) ---
     // 1. Feature Counting & Sorting
@@ -49,6 +51,18 @@ int main(int argc, char* argv[]) {
 	// 4. Build Instance Hashmap from Maximal Cliques
 	MaximalCliqueHashmap mcHashmap;
     auto hashMap = mcHashmap.executeBK(graph);
+
+    // 4b. Export maximal cliques to SQLite + summary JSON
+    ResultExporter::exportToSQLite(
+        config.outputDbPath,
+        config.schemaPath,
+        instances,
+        hashMap
+    );
+    ResultExporter::exportSummaryJson(
+        config.summaryJsonPath,
+        hashMap
+    );
 
 
 	// 5. Get Candidate Colocations

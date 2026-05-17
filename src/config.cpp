@@ -38,6 +38,9 @@ AppConfig ConfigLoader::load(const std::string& configPath) {
             if (std::getline(is_line, value)) {
                 if (key == "dataset_path") config.datasetPath = value;
                 else if (key == "output_path") config.outputPath = value;
+                    else if (key == "schema_path") config.schemaPath = value;
+                    else if (key == "output_db_path") config.outputDbPath = value;
+                    else if (key == "summary_json_path") config.summaryJsonPath = value;
                 else if (key == "neighbor_distance") config.neighborDistance = std::stod(value);
                 else if (key == "min_prevalence") config.minPrev = std::stod(value);
                 else if (key == "min_cond_prob") config.minCondProb = std::stod(value);

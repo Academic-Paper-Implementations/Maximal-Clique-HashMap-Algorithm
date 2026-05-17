@@ -37,9 +37,11 @@ using ColocationInstance = std::vector<const struct SpatialInstance*>;
  * Each spatial instance has a feature type, unique identifier, and 2D coordinates.
  */
 struct SpatialInstance {
+    int idx;
     FeatureType type;  ///< Feature type of this instance (e.g., "A", "B")
     InstanceID id;     ///< Unique identifier (e.g., "A1", "B2")
     double x, y;       ///< 2D spatial coordinates
+    int checkin;       ///< Check-in count
 };
 
 /**
