@@ -3,5 +3,7 @@
 /out/build/x64-Release
 /out/build/x64-Release-New
 /out/build/results.txt
+/out/build/linux
 /CMakeSettings.json
 /data/5k_15f_40k.csv
+results

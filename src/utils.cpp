@@ -7,8 +7,6 @@
 #include <unordered_map>
 #include <set>
 #include <chrono>
-#include <windows.h>
-#include <psapi.h>
 #include <iostream> 
 #include <iomanip>
 #include <iomanip>

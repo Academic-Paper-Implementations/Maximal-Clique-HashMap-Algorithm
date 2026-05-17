@@ -16,11 +16,15 @@
 #include <cmath>
 #include <fstream>
 
-//Show memmory usage
+// Show memory usage
+#ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
 #include <stdio.h>
 #pragma comment(lib, "psapi.lib")
+#else
+#include <sys/resource.h>
+#endif
 
 int main(int argc, char* argv[]) {
     auto programStart = std::chrono::high_resolution_clock::now();
@@ -46,6 +50,7 @@ int main(int argc, char* argv[]) {
 	MaximalCliqueHashmap mcHashmap;
     auto hashMap = mcHashmap.executeBK(graph);
 
+
 	// 5. Get Candidate Colocations
 	auto candidateQueue = mcHashmap.extractInitialCandidates(hashMap);
 
@@ -65,18 +70,25 @@ int main(int argc, char* argv[]) {
 
     // --- REPORT GENERATION (FILE ONLY) ---
     // 1. Get Memory Info (Peak)
+    double peakMemMB = 0.0;
+#ifdef _WIN32
     HANDLE handle = GetCurrentProcess();
     PROCESS_MEMORY_COUNTERS memCounter;
-    SIZE_T peakMemMB = 0;
-
     if (GetProcessMemoryInfo(handle, &memCounter, sizeof(memCounter))) {
-        peakMemMB = memCounter.PeakWorkingSetSize / 1024 / 1024; // Convert to MB
+        peakMemMB = static_cast<double>(memCounter.PeakWorkingSetSize) / 1024 / 1024;
     }
+#else
+    struct rusage usage;
+    if (getrusage(RUSAGE_SELF, &usage) == 0) {
+        // ru_maxrss is kilobytes on Linux
+        peakMemMB = static_cast<double>(usage.ru_maxrss) / 1024.0;
+    }
+#endif
 
     // 2. Write to File
-    std::ofstream outFile("../results.txt");
+    std::ofstream outFile(config.outputPath);
     if (!outFile.is_open()) {
-        std::cerr << "Cannot open results.txt for writing.\n";
+        std::cerr << "Cannot open " << config.outputPath << " for writing.\n";
         return 1;
     }
     // (A) Thông tin Dataset & Config
@@ -96,9 +108,10 @@ int main(int argc, char* argv[]) {
 
 	// (D) Number of Patterns Found
     outFile << "Patterns Found: " << colocations.size() << "\n";
+
     outFile << "----------------------------------------\n";
 
-	// (E) List of Patterns
+    // (E) List of Patterns
     if (!colocations.empty()) {
         int idx = 1;
         for (const auto& col : colocations) {
@@ -111,6 +124,18 @@ int main(int argc, char* argv[]) {
     }
     else {
         outFile << "No patterns found.\n";
+    }
+
+    // (F) Maximal cliques summary from hashmap
+    outFile << "Maximal Cliques (hashmap): " << hashMap.size() << "\n";
+    int cliqueIdx = 1;
+    for (const auto& entry : hashMap) {
+        size_t instanceCount = 0;
+        for (const auto& typeEntry : entry.second) {
+            instanceCount += typeEntry.second.size();
+        }
+        outFile << "  [" << cliqueIdx++ << "] size=" << entry.first.size()
+            << ", instances=" << instanceCount << "\n";
     }
 
     outFile.close();
